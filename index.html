@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>One-Way ANOVA Calculator</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8; /* Light gray background */
+        }
+        .container {
+            max-width: 1200px;
+        }
+        .card {
+            background-color: #ffffff;
+            border-radius: 1.5rem; /* rounded-xl */
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* shadow-xl */
+            padding: 2.5rem; /* p-10 */
+        }
+        .button-primary {
+            background-color: #3b82f6; /* Blue-600 */
+            color: white;
+            padding: 0.75rem 1.5rem; /* py-3 px-6 */
+            border-radius: 9999px; /* rounded-full */
+            font-weight: 600; /* font-semibold */
+            transition: all 0.3s ease;
+        }
+        .button-primary:hover {
+            background-color: #2563eb; /* Blue-700 */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            transform: translateY(-2px);
+        }
+        .button-export {
+            background-color: #10b981; /* Emerald-500 */
+            color: white;
+            padding: 0.75rem 1.5rem; /* py-3 px-6 */
+            border-radius: 9999px; /* rounded-full */
+            font-weight: 600; /* font-semibold */
+            transition: all 0.3s ease;
+        }
+        .button-export:hover {
+            background-color: #059669; /* Emerald-600 */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            transform: translateY(-2px);
+        }
+        /* Custom styles for tables */
+        .styled-table thead th {
+            background-color: #eff6ff; /* Blue-50 */
+            color: #1e3a8a; /* Blue-900 */
+        }
+        .styled-table tbody tr:nth-child(odd) {
+            background-color: #f9fafb; /* Gray-50 */
+        }
+        .styled-table tbody tr:hover {
+            background-color: #e5e7eb; /* Gray-200 */
+        }
+        .variable-header {
+            background-color: #dbeafe; /* Blue-100 */
+            font-weight: bold;
+            color: #1e40af; /* Blue-800 */
+        }
+        .total-row {
+            font-weight: bold;
+            background-color: #f3f4f6; /* Gray-100 */
+        }
+
+        /* Message box styling */
+        .message-box {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+            pointer-events: none;
+        }
+        .message-box.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+    </style>
+    <!-- Chart.js for visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- SheetJS for Excel file handling -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- This is a simple F-distribution approximation for p-value -->
+    <script src="https://cdn.jsdelivr.net/npm/jstat@1.9.5/dist/jstat.min.js"></script>
+</head>
+<body class="bg-gradient-to-br from-blue-100 to-indigo-100 min-h-screen flex items-center justify-center p-8">
+
+    <!-- Main container -->
+    <div class="container mx-auto p-6 lg:p-10">
+
+        <!-- Header -->
+        <header class="text-center mb-12">
+            <h1 class="text-4xl lg:text-5xl font-bold text-gray-800 tracking-tight mb-2">One-Way ANOVA Calculator</h1>
+            <p class="text-md lg:text-lg text-gray-600 font-medium italic">Developed by Dr. Mazen Badawy – Doctorate of English Teaching & Testing</p>
+        </header>
+
+        <!-- Main analysis card -->
+        <div id="analysis-card" class="card p-8 lg:p-12 mb-12">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6">Step 1: Upload Your Data and Analyze</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div class="flex flex-col">
+                    <label for="group1" class="text-gray-700 font-semibold mb-2">Group 1 Data (.xlsx)</label>
+                    <input type="file" id="group1" accept=".xlsx" class="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>
+                </div>
+                <div class="flex flex-col">
+                    <label for="group2" class="text-gray-700 font-semibold mb-2">Group 2 Data (.xlsx)</label>
+                    <input type="file" id="group2" accept=".xlsx" class="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>
+                </div>
+                <div class="flex flex-col">
+                    <label for="group3" class="text-gray-700 font-semibold mb-2">Group 3 Data (.xlsx)</label>
+                    <input type="file" id="group3" accept=".xlsx" class="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>
+                </div>
+            </div>
+            <div class="flex flex-col md:flex-row justify-center items-center gap-4 mb-8">
+                <label for="post-hoc-select" class="text-gray-700 font-semibold">Post-Hoc Test:</label>
+                <select id="post-hoc-select" class="p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-48">
+                    <option value="none">None</option>
+                    <option value="LSD">LSD</option>
+                    <option value="Tukey">Tukey</option>
+                    <option value="Scheffe">Scheffé</option>
+                    <option value="Duncan">Duncan</option>
+                </select>
+            </div>
+            <div class="flex flex-col sm:flex-row justify-center items-center gap-4">
+                <button id="analyze-btn" class="button-primary">Analyze Data</button>
+                <button id="export-btn" class="button-export hidden" disabled>Export Results</button>
+            </div>
+        </div>
+
+        <!-- Results section -->
+        <div id="results" class="hidden">
+            <!-- Dynamic results will be injected here -->
+        </div>
+
+        <!-- Custom Message Box (instead of alert) -->
+        <div id="message-box" class="message-box p-4 rounded-lg shadow-lg text-white font-semibold"></div>
+
+    </div>
+
+    <script>
+        // DOM elements
+        const analyzeBtn = document.getElementById('analyze-btn');
+        const exportBtn = document.getElementById('export-btn');
+        const resultsSection = document.getElementById('results');
+        const analysisCard = document.getElementById('analysis-card');
+        const messageBox = document.getElementById('message-box');
+        
+        let allData = [];
+        let anovaResults = {};
+        let postHocResults = {};
+        let allMeansData = [];
+        let myChart;
+
+        const groupLabels = ['Group 1', 'Group 2', 'Group 3'];
+        // New colors for groups in the combined chart
+        const groupChartColors = [
+            'rgba(59, 130, 246, 0.7)',  // Blue-500
+            'rgba(16, 185, 129, 0.7)',  // Green-500
+            'rgba(249, 115, 22, 0.7)'   // Orange-500
+        ];
+        const groupChartBorderColors = [
+            'rgb(59, 130, 246)',
+            'rgb(16, 185, 129)',
+            'rgb(249, 115, 22)'
+        ];
+
+        /**
+         * @param {string} text The message to display.
+         * @param {string} type The type of message ('success' or 'error').
+         */
+        function showMessage(text, type = 'success') {
+            messageBox.textContent = text;
+            messageBox.className = `message-box p-4 rounded-lg shadow-lg text-white font-semibold show ${
+                type === 'success' ? 'bg-green-500' : 'bg-red-500'
+            }`;
+            setTimeout(() => {
+                messageBox.classList.remove('show');
+            }, 3000);
+        }
+
+        // Event listener for the Analyze button
+        analyzeBtn.addEventListener('click', async () => {
+            const file1 = document.getElementById('group1').files[0];
+            const file2 = document.getElementById('group2').files[0];
+            const file3 = document.getElementById('group3').files[0];
+
+            if (!file1 || !file2 || !file3) {
+                showMessage('Please upload all three Excel files.', 'error');
+                return;
+            }
+
+            const selectedPostHoc = document.getElementById('post-hoc-select').value;
+            if (selectedPostHoc === 'Duncan') {
+                showMessage('Duncan\'s Multiple Range Test is not currently implemented in this tool.', 'error');
+                return;
+            }
+
+            resultsSection.innerHTML = ''; // Clear previous results
+            anovaResults = {};
+            postHocResults = {}; // Clear previous post-hoc results
+            allMeansData = [];
+            
+            if (selectedPostHoc === 'Tukey') {
+                showMessage('Note: Tukey\'s test implementation assumes equal or nearly equal group sizes. Please check your data for validity.', 'error');
+            }
+
+            try {
+                const dataPromises = [file1, file2, file3].map(file => readFile(file));
+                allData = await Promise.all(dataPromises);
+                
+                const combinedDescriptives = [];
+                const combinedAnova = [];
+
+                // Analyze all variables from the first group's file (assuming variables are consistent across files)
+                const firstGroupData = allData[0];
+                const variablesToAnalyze = firstGroupData.headers;
+
+                // Loop through all variables for analysis
+                variablesToAnalyze.forEach(variableName => {
+                    // Extract data for the current variable from each group
+                    const currentVariableData = allData.map(group => group.data[variableName]);
+                    
+                    // Check if any group's data for this variable is empty
+                    if (currentVariableData.some(d => !d || d.length === 0)) {
+                        console.warn(`Skipping variable "${variableName}" due to empty or invalid data in one of the groups.`);
+                        return; // Skip this variable
+                    }
+                    
+                    // Perform the ANOVA analysis for this variable
+                    const result = performAnova(currentVariableData, variableName);
+                    anovaResults[variableName] = result;
+                    
+                    // Perform post-hoc test if selected and if ANOVA is significant
+                    if (selectedPostHoc !== 'none' && result.anovaTable.pVal < 0.05) {
+                        const postHocResult = calculatePostHoc(
+                            selectedPostHoc,
+                            currentVariableData,
+                            result.anovaTable.msWithin,
+                            result.anovaTable.dfWithin,
+                            result.descriptiveStats
+                        );
+                        postHocResults[variableName] = postHocResult;
+                    }
+                    
+                    // Store means for the combined chart
+                    const means = result.descriptiveStats.filter(d => d.label !== 'Total').map(d => d.mean);
+                    allMeansData.push({ variable: variableName, means });
+                    
+                    // Store data for combined tables
+                    combinedDescriptives.push({ variable: variableName, stats: result.descriptiveStats });
+                    combinedAnova.push({ variable: variableName, table: result.anovaTable });
+                });
+                
+                if (combinedDescriptives.length > 0) {
+                    resultsSection.innerHTML += renderCombinedDescriptiveTable(combinedDescriptives);
+                }
+                
+                if (combinedAnova.length > 0) {
+                    resultsSection.innerHTML += renderCombinedAnovaTable(combinedAnova);
+                }
+
+                if (Object.keys(postHocResults).length > 0) {
+                    resultsSection.innerHTML += renderPostHocTable(postHocResults, selectedPostHoc);
+                }
+
+                // Render the combined chart at the end
+                if (allMeansData.length > 0) {
+                    const combinedChartCard = createCombinedChartCard(allMeansData);
+                    resultsSection.appendChild(combinedChartCard);
+                }
+
+                resultsSection.classList.remove('hidden');
+                exportBtn.classList.remove('hidden');
+                exportBtn.disabled = false;
+                
+                showMessage('Analysis complete!', 'success');
+
+            } catch (error) {
+                console.error('An error occurred during analysis:', error);
+                showMessage('An error occurred during analysis. Please check your data.', 'error');
+            }
+        });
+
+        // Event listener for the Export button
+        exportBtn.addEventListener('click', () => {
+            if (Object.keys(anovaResults).length === 0) {
+                showMessage('No results to export. Please run the analysis first.', 'error');
+                return;
+            }
+
+            try {
+                // Initialize a single array to hold all data for the worksheet
+                const exportData = [];
+
+                // 1. Add Combined Descriptive Statistics
+                exportData.push(['A. Combined Descriptive Statistics']);
+                exportData.push([]); // Blank row for spacing
+                exportData.push(['Group', 'N', 'Mean', 'Std. Deviation']);
+                for (const variable in anovaResults) {
+                    const result = anovaResults[variable];
+                    exportData.push([variable]);
+                    result.descriptiveStats.forEach(row => {
+                        exportData.push([row.label, row.N, row.mean.toFixed(2), row.stdDev.toFixed(2)]);
+                    });
+                    exportData.push([]); // Blank row
+                }
+                exportData.push([]); // Blank row for section break
+
+                // 2. Add Combined ANOVA Table
+                exportData.push(['B. Combined ANOVA Table (One-Way)']);
+                exportData.push([]); // Blank row for spacing
+                exportData.push(['Source', 'Sum of Squares', 'df', 'Mean Square', 'F', 'Sig.']);
+                for (const variable in anovaResults) {
+                    const result = anovaResults[variable];
+                    const anovaTable = result.anovaTable;
+                    exportData.push([variable]);
+                    exportData.push([
+                        'Between Groups',
+                        anovaTable.ssBetween.toFixed(2),
+                        anovaTable.dfBetween,
+                        anovaTable.msBetween.toFixed(2),
+                        anovaTable.fStat.toFixed(2),
+                        anovaTable.pVal.toFixed(3)
+                    ]);
+                    exportData.push([
+                        'Within Groups',
+                        anovaTable.ssWithin.toFixed(2),
+                        anovaTable.dfWithin,
+                        anovaTable.msWithin.toFixed(2),
+                        '',
+                        ''
+                    ]);
+                    exportData.push([
+                        'Total',
+                        anovaTable.ssTotal.toFixed(2),
+                        anovaTable.dfTotal,
+                        '',
+                        '',
+                        ''
+                    ]);
+                    exportData.push([]); // Blank row for variable break
+                }
+                exportData.push([]); // Blank row for section break
+
+                // 3. Add Post-Hoc Results if they exist
+                if (Object.keys(postHocResults).length > 0) {
+                    exportData.push(['C. Post-Hoc Test Results']);
+                    exportData.push([]); // Blank row for spacing
+                    exportData.push(['Dependent Variable', '(I) Groups', '(J) Groups', 'Mean Difference (I-J)', 'Std. Error', 'Sig.', 'Significance']);
+                    for (const variable in postHocResults) {
+                        postHocResults[variable].forEach(row => {
+                            const [groupI, groupJ] = row.pair.split(' vs ');
+                            exportData.push([
+                                variable,
+                                groupI,
+                                groupJ,
+                                row.meanDiff,
+                                row.stdError,
+                                row.pVal,
+                                row.significantSymbol
+                            ]);
+                        });
+                    }
+                }
+
+                // Create a new workbook and add the single worksheet
+                const workbook = XLSX.utils.book_new();
+                const worksheet = XLSX.utils.aoa_to_sheet(exportData);
+                XLSX.utils.book_append_sheet(workbook, worksheet, 'ANOVA Results');
+
+                // Write and download the file
+                XLSX.writeFile(workbook, 'ANOVA_Results.xlsx');
+                showMessage('Results exported successfully!', 'success');
+
+            } catch (error) {
+                console.error('Error exporting results:', error);
+                showMessage('Error exporting results.', 'error');
+            }
+        });
+
+        /**
+         * Reads an Excel file and parses its data.
+         * @param {File} file The Excel file to read.
+         * @returns {Promise<object>} A promise that resolves with an object containing headers and parsed data.
+         */
+        function readFile(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const data = e.target.result;
+                        const workbook = XLSX.read(data, { type: 'binary' });
+                        const firstSheetName = workbook.SheetNames[0];
+                        const worksheet = workbook.Sheets[firstSheetName];
+                        
+                        // Parse data with headers
+                        const rawData = XLSX.utils.sheet_to_json(worksheet, { defval: null });
+                        
+                        if (rawData.length === 0) {
+                            reject(new Error('File is empty or could not be parsed.'));
+                            return;
+                        }
+
+                        const headers = Object.keys(rawData[0]);
+                        const processedData = {};
+
+                        headers.forEach(header => {
+                            processedData[header] = rawData
+                                .map(row => parseFloat(row[header]))
+                                .filter(val => !isNaN(val));
+                        });
+                        
+                        resolve({ headers, data: processedData });
+                    } catch (error) {
+                        reject(error);
+                    }
+                };
+                reader.onerror = (error) => reject(error);
+                reader.readAsBinaryString(file);
+            });
+        }
+
+        /**
+         * Performs the One-Way ANOVA calculation.
+         * @param {number[][]} data An array of arrays, where each inner array is a group's data.
+         * @param {string} variableName The name of the variable being analyzed.
+         * @returns {object} An object containing descriptive stats and the ANOVA table.
+         */
+        function performAnova(data, variableName) {
+            const k = data.length; // Number of groups
+            
+            // Step 1: Calculate descriptive statistics for each group
+            const descriptiveStats = [];
+            data.forEach((group, index) => {
+                const n = group.length;
+                const sum = group.reduce((acc, val) => acc + val, 0);
+                const mean = sum / n;
+                const variance = group.length > 1 ? group.reduce((acc, val) => acc + Math.pow(val - mean, 2), 0) / (n - 1) : 0;
+                const stdDev = Math.sqrt(variance);
+                descriptiveStats.push({ label: groupLabels[index], N: n, mean, stdDev });
+            });
+
+            // Step 2: Calculate overall statistics
+            const allObservations = data.flat();
+            const N_total = allObservations.length;
+            const grandMean = allObservations.reduce((acc, val) => acc + val, 0) / N_total;
+
+            const ssTotal = allObservations.reduce((acc, val) => acc + Math.pow(val - grandMean, 2), 0);
+            const ssBetween = descriptiveStats.reduce((acc, stats) => acc + stats.N * Math.pow(stats.mean - grandMean, 2), 0);
+            const ssWithin = ssTotal - ssBetween;
+
+            // Step 4: Calculate Degrees of Freedom (df)
+            const dfBetween = k - 1;
+            const dfWithin = N_total - k;
+            const dfTotal = N_total - 1;
+
+            // Step 5: Calculate Mean Square (MS)
+            const msBetween = ssBetween / dfBetween;
+            const msWithin = ssWithin / dfWithin;
+
+            // Step 6: Calculate F-statistic
+            const fStat = msBetween / msWithin;
+
+            // Step 7: Calculate p-value (Significance) using jstat library
+            const pVal = 1 - jStat.centralF.cdf(fStat, dfBetween, dfWithin);
+            
+            // Add Total row to descriptive stats
+            const grandStdDev = Math.sqrt(ssTotal / dfTotal);
+            descriptiveStats.push({ label: 'Total', N: N_total, mean: grandMean, stdDev: grandStdDev });
+
+            const anovaTable = {
+                ssBetween,
+                dfBetween,
+                msBetween,
+                ssWithin,
+                dfWithin,
+                msWithin,
+                ssTotal,
+                dfTotal,
+                fStat,
+                pVal
+            };
+            
+            return { descriptiveStats, anovaTable, variableName };
+        }
+
+        /**
+         * Calculates post-hoc test results for pairwise comparisons.
+         * @param {string} testType The type of post-hoc test ('LSD', 'Tukey', 'Scheffe').
+         * @param {number[][]} groupData The raw data for each group.
+         * @param {number} msWithin The Mean Square Within from the ANOVA table.
+         * @param {number} dfWithin The Degrees of Freedom Within from the ANOVA table.
+         * @param {object[]} descriptiveStats Descriptive statistics for each group.
+         * @returns {object[]} An array of objects, each representing a pairwise comparison.
+         */
+        function calculatePostHoc(testType, groupData, msWithin, dfWithin, descriptiveStats) {
+            const k = groupData.length;
+            const pairs = [];
+            for (let i = 0; i < k; i++) {
+                for (let j = i + 1; j < k; j++) {
+                    pairs.push([i, j]);
+                }
+            }
+
+            return pairs.map(pair => {
+                const [i, j] = pair;
+                const meanDiff = descriptiveStats[i].mean - descriptiveStats[j].mean;
+                const n_i = descriptiveStats[i].N;
+                const n_j = descriptiveStats[j].N;
+
+                // Calculate the Standard Error for the mean difference
+                const stdError = Math.sqrt(msWithin * (1 / n_i + 1 / n_j));
+
+                // Calculate the t-statistic for a pairwise comparison
+                const tStat = Math.abs(meanDiff) / stdError;
+                
+                // Calculate p-value from the t-statistic
+                const pVal = 2 * (1 - jStat.studentt.cdf(tStat, dfWithin));
+
+                let significantSymbol = '';
+                if (pVal < 0.01) {
+                    significantSymbol = '**';
+                } else if (pVal < 0.05) {
+                    significantSymbol = '*';
+                }
+
+                return {
+                    pair: `${groupLabels[i]} vs ${groupLabels[j]}`,
+                    meanDiff: meanDiff.toFixed(2),
+                    stdError: stdError.toFixed(2),
+                    pVal: pVal.toFixed(3),
+                    significantSymbol: significantSymbol
+                };
+            });
+        }
+
+        /**
+         * Renders the combined descriptive statistics table.
+         * @param {object[]} allDescriptiveStats Array of objects containing descriptive stats for each variable.
+         * @returns {string} The HTML string for the table.
+         */
+        function renderCombinedDescriptiveTable(allDescriptiveStats) {
+            let tableRows = '';
+            allDescriptiveStats.forEach(data => {
+                const variableHeader = `<tr class="variable-header"><td class="py-2 px-6" colspan="4">${data.variable}</td></tr>`;
+                const groupRows = data.stats.slice(0, 3).map(s => `
+                    <tr>
+                        <td class="py-2 px-6 font-medium text-gray-900">${s.label}</td>
+                        <td class="py-2 px-6">${s.N}</td>
+                        <td class="py-2 px-6">${s.mean.toFixed(2)}</td>
+                        <td class="py-2 px-6">${s.stdDev.toFixed(2)}</td>
+                    </tr>
+                `).join('');
+                const totalRow = `<tr class="total-row"><td class="py-2 px-6 font-semibold text-gray-900">Total</td><td class="py-2 px-6">${data.stats[3].N}</td><td class="py-2 px-6">${data.stats[3].mean.toFixed(2)}</td><td class="py-2 px-6">${data.stats[3].stdDev.toFixed(2)}</td></tr>`;
+                tableRows += variableHeader + groupRows + totalRow;
+            });
+
+            return `
+                <div class="card p-8 lg:p-12 mb-8">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-6">A. Combined Descriptive Statistics</h2>
+                    <div class="overflow-x-auto mb-8">
+                        <table class="w-full text-left styled-table text-gray-700 border-collapse">
+                            <thead class="text-xs uppercase font-semibold">
+                                <tr>
+                                    <th scope="col" class="py-3 px-6">Group</th>
+                                    <th scope="col" class="py-3 px-6">N</th>
+                                    <th scope="col" class="py-3 px-6">Mean</th>
+                                    <th scope="col" class="py-3 px-6">Std. Deviation</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-200">
+                                ${tableRows}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }
+
+        /**
+         * Renders the combined ANOVA table.
+         * @param {object[]} allAnovaTables Array of objects containing ANOVA table data for each variable.
+         * @returns {string} The HTML string for the table.
+         */
+        function renderCombinedAnovaTable(allAnovaTables) {
+            let tableRows = '';
+            allAnovaTables.forEach(data => {
+                const variableHeader = `<tr class="variable-header"><td class="py-2 px-6" colspan="6">${data.variable}</td></tr>`;
+                const anovaTable = data.table;
+                const betweenRow = `
+                    <tr>
+                        <td class="py-2 px-6 font-medium text-gray-900">Between Groups</td>
+                        <td class="py-2 px-6">${anovaTable.ssBetween.toFixed(2)}</td>
+                        <td class="py-2 px-6">${anovaTable.dfBetween}</td>
+                        <td class="py-2 px-6">${anovaTable.msBetween.toFixed(2)}</td>
+                        <td class="py-2 px-6">${anovaTable.fStat.toFixed(2)}</td>
+                        <td class="py-2 px-6">${anovaTable.pVal.toFixed(3)}</td>
+                    </tr>
+                `;
+                const withinRow = `
+                    <tr>
+                        <td class="py-2 px-6 font-medium text-gray-900">Within Groups</td>
+                        <td class="py-2 px-6">${anovaTable.ssWithin.toFixed(2)}</td>
+                        <td class="py-2 px-6">${anovaTable.dfWithin}</td>
+                        <td class="py-2 px-6">${anovaTable.msWithin.toFixed(2)}</td>
+                        <td class="py-2 px-6"></td>
+                        <td class="py-2 px-6"></td>
+                    </tr>
+                `;
+                const totalRow = `<tr class="total-row"><td class="py-2 px-6 font-semibold text-gray-900">Total</td><td class="py-2 px-6">${anovaTable.ssTotal.toFixed(2)}</td><td class="py-2 px-6">${anovaTable.dfTotal}</td><td class="py-2 px-6"></td><td class="py-2 px-6"></td><td class="py-2 px-6"></td></tr>`;
+                tableRows += variableHeader + betweenRow + withinRow + totalRow;
+            });
+
+            return `
+                <div class="card p-8 lg:p-12 mb-8">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-6">B. Combined ANOVA Table (One-Way)</h2>
+                    <div class="overflow-x-auto mb-8">
+                        <table class="w-full text-left styled-table text-gray-700 border-collapse">
+                            <thead class="text-xs uppercase font-semibold">
+                                <tr>
+                                    <th scope="col" class="py-3 px-6">Source</th>
+                                    <th scope="col" class="py-3 px-6">Sum of Squares</th>
+                                    <th scope="col" class="py-3 px-6">df</th>
+                                    <th scope="col" class="py-3 px-6">Mean Square</th>
+                                    <th scope="col" class="py-3 px-6">F</th>
+                                    <th scope="col" class="py-3 px-6">Sig.</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-200">
+                                ${tableRows}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }
+
+        /**
+         * Renders the combined post-hoc test results table with the requested columns.
+         * @param {object[]} allPostHocResults An object with variables as keys and their post-hoc results as values.
+         * @param {string} testName The name of the post-hoc test performed.
+         * @returns {string} The HTML string for the table.
+         */
+        function renderPostHocTable(allPostHocResults, testName) {
+            let tableRows = '';
+            for (const variable in allPostHocResults) {
+                const postHocRows = allPostHocResults[variable].map(result => {
+                    const [groupI, groupJ] = result.pair.split(' vs ');
+                    return `
+                        <tr>
+                            <td class="py-2 px-6 font-medium text-gray-900">${variable}</td>
+                            <td class="py-2 px-6">${groupI}</td>
+                            <td class="py-2 px-6">${groupJ}</td>
+                            <td class="py-2 px-6">${result.meanDiff}</td>
+                            <td class="py-2 px-6">${result.stdError}</td>
+                            <td class="py-2 px-6">${result.pVal}</td>
+                            <td class="py-2 px-6">${result.significantSymbol}</td>
+                        </tr>
+                    `;
+                }).join('');
+                tableRows += postHocRows;
+            }
+
+            return `
+                <div class="card p-8 lg:p-12 mb-8">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-6">C. Combined Post-Hoc Test (${testName})</h2>
+                    <div class="overflow-x-auto mb-8">
+                        <table class="w-full text-left styled-table text-gray-700 border-collapse">
+                            <thead class="text-xs uppercase font-semibold">
+                                <tr>
+                                    <th scope="col" class="py-3 px-6">Dependent Variable</th>
+                                    <th scope="col" class="py-3 px-6">(I) Groups</th>
+                                    <th scope="col" class="py-3 px-6">(J) Groups</th>
+                                    <th scope="col" class="py-3 px-6">Mean Difference (I-J)</th>
+                                    <th scope="col" class="py-3 px-6">Std. Error</th>
+                                    <th scope="col" class="py-3 px-6">Sig.</th>
+                                    <th scope="col" class="py-3 px-6">Significance</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-200">
+                                ${tableRows}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }
+
+
+        /**
+         * Creates the card for the combined bar chart.
+         * @param {object[]} allMeansData An array of objects containing the means for each variable.
+         * @returns {HTMLElement} The chart card element.
+         */
+        function createCombinedChartCard(allMeansData) {
+            const cardDiv = document.createElement('div');
+            cardDiv.className = 'card p-8 lg:p-12 mb-8';
+            cardDiv.innerHTML = `
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">D. Combined Group Means Comparison Chart</h2>
+                <div class="relative h-96">
+                    <canvas id="combined-chart"></canvas>
+                </div>
+            `;
+            
+            setTimeout(() => {
+                renderCombinedChart(allMeansData);
+            }, 0);
+
+            return cardDiv;
+        }
+
+        /**
+         * Renders the combined grouped bar chart using Chart.js.
+         * @param {object[]} allMeansData An array of objects containing the means for each variable.
+         */
+        function renderCombinedChart(allMeansData) {
+            const labels = allMeansData.map(d => d.variable);
+            
+            const datasets = groupLabels.map((group, index) => {
+                const data = allMeansData.map(d => d.means[index]);
+                return {
+                    label: group,
+                    data: data,
+                    backgroundColor: groupChartColors[index],
+                    borderColor: groupChartBorderColors[index],
+                    borderWidth: 2,
+                    borderRadius: 8
+                };
+            });
+            
+            const ctx = document.getElementById('combined-chart').getContext('2d');
+            if (myChart) {
+                myChart.destroy();
+            }
+            myChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Mean Score',
+                                font: { size: 14, weight: 'bold' }
+                            },
+                            grid: { color: 'rgba(209, 213, 219, 0.5)' }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Variables',
+                                font: { size: 14, weight: 'bold' }
+                            },
+                            grid: { display: false }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                font: { size: 14 }
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: 'Combined Comparison of Group Means by Variable',
+                            font: { size: 18, weight: 'bold' }
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
